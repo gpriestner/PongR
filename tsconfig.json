@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "noImplicitAny": false,
+    "noEmitOnError": true,
+    "removeComments": false,
+    "sourceMap": true,
+    "target": "ESNext",
+    "module": "CommonJS",
+    "strict": true,
+    "esModuleInterop": true,
+    "allowJs": true,
+    "outDir": "./wwwroot/build"
+  },
+  "files": [ "wwwroot/ts/nop.ts" ],
+  "exclude": [
+    "node_modules",
+    "wwwroot/js/signalr/dist/browser/signalr.js"
+  ]
+}
