@@ -275,6 +275,7 @@ class Ball {
     height = 5;
     dx = 0;
     dy = 0;
+    speed = 1.0;
     isDead = false;
     deadCount = 0;
     winner = null;
@@ -288,8 +289,11 @@ class Ball {
             }
         }
         else {
-            const dx = this.dx * progress;
-            const dy = this.dy * progress;
+            if (counter == 1) {
+                this.speed += 0.001;
+            }
+            const dx = this.dx * progress * this.speed;
+            const dy = this.dy * progress * this.speed;
             const x = this.x + dx;
             const y = this.y + dy;
             // detect winning ball (ball goes off left/right edge)
@@ -312,7 +316,7 @@ class Ball {
             }
             // detect bounce off both bats
             if (this.dx > 0) {
-                // detect bounce off right bat if right is local
+                // detect bounce off right bat only if right is local
                 if (game.isRightLocal && game.playerRight.isHit(game.ball.middleRight)) {
                     this.dx = -this.dx;
                     // calc dy for new angle of ball
@@ -335,8 +339,8 @@ class Ball {
                     connection.invoke("UpdateBall", this.x, this.y, this.dx, this.dy).catch(e => console.error(e));
                 }
             }
-            this.x += this.dx * progress;
-            this.y += this.dy * progress;
+            this.x += this.dx * progress * this.speed;
+            this.y += this.dy * progress * this.speed;
         }
     }
     remoteUpdate(x, y, dx, dy) {
@@ -375,6 +379,9 @@ class Ball {
         this.y = player.y + player.height * 0.5;
         this.dx = 5 * player.direction;
         this.dy = 10 * (newBallAngle - 0.5);
+        this.speed = 1.0;
+
+        connection.invoke("UpdateBall", this.x, this.y, this.dx, this.dy).catch(e => console.error(e));
     }
 }
 class Game {
@@ -384,12 +391,12 @@ class Game {
     static vWidth = 1000;
     static vHeight = 1000;
     static Game = (() => {
+        Game.resize();
         addEventListener("resize", Game.resize);
     })();
     #previousTimestamp = 0;
     static isPaused = false;
     static resize() {
-        //game.start();
         Game.Canvas.width = window.innerWidth;
         Game.Canvas.height = window.innerHeight;
         const xScale = window.innerWidth / Game.vWidth;
@@ -411,25 +418,27 @@ class Game {
             Game.isPaused = true;
             return;
         }
-        const totalUpdates = 5;
-        let counter = 1;
-        const progress = 1 / totalUpdates;
-        while (counter <= totalUpdates) {
-            this.playerLeft?.update(progress, counter);
-            this.playerRight?.update(progress, counter);
-            this.ball?.update(progress, counter);
-            counter += 1;
+        if (!this.isGameOver) {
+            const totalUpdates = 5;
+            let counter = 1;
+            const progress = 1 / totalUpdates;
+            while (counter <= totalUpdates) {
+                this.playerLeft?.update(progress, counter);
+                this.playerRight?.update(progress, counter);
+                this.ball?.update(progress, counter);
+                counter += 1;
+            }
         }
         this.draw();
     }
     draw() {
         // clear the screen
-        //const height = Game.Canvas.height;
-        //const width = Game.Canvas.width;
-        // Game.View.clearRect(0, 0, width, height);
         Game.View.clearRect(0, 0, Game.vWidth, Game.vHeight);
 
+        if (this.isGameOver) {
+            Game.View.fillText("GAME OVER", Game.vWidth / 2 - 115, Game.vHeight / 2);
 
+        } 
         // draw all game objects
         this.playerLeft.draw();
         this.playerRight.draw();
@@ -470,12 +479,12 @@ class Game {
     get isRightLocal() {
         return this.thisPlayer == "-1";
     }
+    get isGameOver() {
+        return this.playerLeft.score >= 11 || this.playerRight.score >= 11;
+    }
     start(thisPlayer, newBallAngle) {
         // start/setup logic
-        //Game.Canvas.height = window.innerHeight;
-        //Game.Canvas.width = window.innerWidth;
         Game.resize();
-
 
         this.thisPlayer = thisPlayer;
         this.playerLeft = new Player(1);

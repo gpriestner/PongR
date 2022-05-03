@@ -6,12 +6,13 @@ namespace TsTest2.Hubs
     {
         private static Dictionary<string, string?> clients = new Dictionary<string,string?>();
         private static string? waitingPlayer = null;
-        public async Task SendMessage(string user, string message)
-        {
-            await Clients.All.SendAsync("ReceiveMessage", user, message);
-        }
+        //public async Task SendMessage(string user, string message)
+        //{
+        //    await Clients.All.SendAsync("ReceiveMessage", user, message);
+        //}
         public async Task JoinGame(string newBallAngle)
         {
+            
             if (clients.Count % 2 == 0)
             {
                 waitingPlayer = Context.ConnectionId;
@@ -44,6 +45,11 @@ namespace TsTest2.Hubs
         {
             var otherPlayer = clients[Context.ConnectionId];
             await Clients.Client(otherPlayer!).SendAsync("UpdateBall", x, y, dx, dy);
+        }
+
+        public override Task OnDisconnectedAsync(Exception? exception)
+        {
+            return base.OnDisconnectedAsync(exception);
         }
     }
 }
