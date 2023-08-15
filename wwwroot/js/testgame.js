@@ -410,8 +410,8 @@ class Game {
     #previousTimestamp = 0;
     static isPaused = false;
     static resize() {
-        Game.Canvas.width = window.innerWidth;
-        Game.Canvas.height = window.innerHeight;
+        Game.Canvas.width = window.innerWidth - 1;
+        Game.Canvas.height = window.innerHeight - 1;
         const xScale = window.innerWidth / Game.vWidth;
         const yScale = window.innerHeight / Game.vHeight;
         Game.View.scale(xScale, yScale);
