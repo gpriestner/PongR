@@ -5,8 +5,12 @@
     <title>Pong</title>
 </head>
 <body style="margin: 0; height: 100vh; background-color: grey;">
+    <div id="startup" style="padding: 10px; position: absolute; background-color: lightgray; margin: 4px;">
+        Enter your name: <input id="playername" autocomplete="off" type="text" /> 
+        <button id="play">Play</button>
+        <span id="waiting" style="display: none;">Waiting for another player to connect . . .</span>
+    </div>
     <canvas style="display: block; background-color: black;"></canvas>
-    <!--<script> var exports = {}; </script>-->
     <script src="js/signalr/dist/browser/signalr.js"></script>
     <script src="js/testgame.js"></script>
 </body>

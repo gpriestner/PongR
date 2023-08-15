@@ -208,16 +208,24 @@ class Player {
     scoreX = 0;
     static speed = 2;
     isLocal = false;
+    name = "";
     constructor(direction) {
         this.direction = direction;
         this.height = Game.vHeight / 12;
         if (direction === 1) {
             this.x = 50;
-            this.scoreX = Game.vWidth * 0.25;
+            //this.scoreX = Game.vWidth * 0.25;
+            this.xName = Game.vWidth * 0.25;
+            this.xScore = Game.vWidth * 0.48;
+            this.scoreAlign = "right";
         }
         else {
             this.x = Game.vWidth - 50;
-            this.scoreX = Game.vWidth * 0.75;
+            //this.scoreX = Game.vWidth * 0.75;
+
+            this.xName = Game.vWidth * 0.75;
+            this.xScore = Game.vWidth * 0.52;
+            this.scoreAlign = "left";
         }
         this.y = (Game.vHeight / 2) - (this.height / 2);
     }
@@ -247,7 +255,12 @@ class Player {
         Game.View.fillRect(this.x, this.y, this.width, this.height);
         let star = "";
         if (this.isLocal) star = "*"
-        Game.View.fillText(`${this.score}${star}`, this.scoreX, 80);
+        //Game.View.fillText(`${this.score} ${this.name}`, this.scoreX, 80);
+
+        Game.View.textAlign = this.scoreAlign;
+        Game.View.fillText(this.score, this.xScore, 80);
+        Game.View.textAlign = "center";
+        Game.View.fillText(`${this.name}${star}`, this.xName, 80);
     }
     get batRect() {
         return {
@@ -436,7 +449,8 @@ class Game {
         Game.View.clearRect(0, 0, Game.vWidth, Game.vHeight);
 
         if (this.isGameOver) {
-            Game.View.fillText("GAME OVER", Game.vWidth / 2 - 115, Game.vHeight / 2);
+            Game.View.textAlign = "center";
+            Game.View.fillText("GAME OVER", Game.vWidth / 2, Game.vHeight / 2);
 
         } 
         // draw all game objects
@@ -456,7 +470,7 @@ class Game {
             if (GameInput.isPaused)
                 Game.isPaused = false;
         }
-        else {
+        else if (!game.stopped) {
             const framesPerSecond = 30;
             const delay = 1000 / (framesPerSecond + 1);
             const elapsed = timestamp - this.#previousTimestamp;
@@ -480,22 +494,29 @@ class Game {
         return this.thisPlayer == "-1";
     }
     get isGameOver() {
-        return this.playerLeft.score >= 11 || this.playerRight.score >= 11;
+        const winningScore = 11;
+        return this.playerLeft.score >= winningScore || this.playerRight.score >= winningScore;
     }
-    start(thisPlayer, newBallAngle) {
+    start(thisPlayer, newBallAngle, otherPlayerName) {
         // start/setup logic
         Game.resize();
-
+        this.stopped = false;
         this.thisPlayer = thisPlayer;
         this.playerLeft = new Player(1);
         this.playerRight = new Player(-1);
+        this.otherPlayerName = otherPlayerName;
+        const localPlayerName = document.getElementById("playername").value;
 
         if (thisPlayer == "1") {
             this.playerLeft.isLocal = true;
+            this.playerLeft.name = localPlayerName;
             this.playerRight.isLocal = false;
+            this.playerRight.name = otherPlayerName;
         } else {
             this.playerLeft.isLocal = false;
+            this.playerLeft.name = otherPlayerName;
             this.playerRight.isLocal = true;
+            this.playerRight.name = localPlayerName;
         }
 
         this.ball = new Ball(this.playerLeft, newBallAngle);
@@ -505,20 +526,47 @@ class Game {
     static animate = (timestamp) => game.step(timestamp);
 }
 
-var game = new Game();
-//game.start();
+const game = new Game();
+const playButton = document.getElementById("play");
+const playDiv = document.getElementById("startup");
+const playerName = document.getElementById("playername");
+const waitingDiv = document.getElementById("waiting");
+const connection = new signalR.HubConnectionBuilder().withUrl("/pinghub").configureLogging(signalR.LogLevel.Debug).build();
 
-var connection = new signalR.HubConnectionBuilder().withUrl("/pinghub").configureLogging(signalR.LogLevel.Debug).build();
+playerName.addEventListener("keyup", e => {
+    e.preventDefault();
+    if (e.key === "Enter") playButton.click();
+});
 
-connection.on("StartPlay", (player, newBallAngle) => game.start(player, newBallAngle));
+connection.on("StartPlay", (player, newBallAngle, playerName) => {
+    waitingDiv.style.display = "none";
+    playDiv.style.display = "none";
+    game.start(player, newBallAngle, playerName);
+});
 connection.on("KeyUp", RemoteKeyboard.keyUp);
 connection.on("KeyDown", RemoteKeyboard.keyDown);
 connection.on("UpdateBall", (x, y, dx, dy) => game.ball.remoteUpdate(x, y, dx, dy));
+connection.on("PlayerLeft", () => {
+    connection.stop();
+    playDiv.style.display = "block";
+    game.stopped = true;
+    Game.View.textAlign = "center";
+    Game.View.fillText(`${game.otherPlayerName} has left the game`, Game.vWidth / 2, Game.vHeight * 0.75);
+});
 
-connection.start().then(function () {
-    console.log("Connection successful");
+//window.addEventListener('beforeunload', () => {
+    //connection.invoke("LeaveGame");
+//    connection.stop();
+//});
 
-    const newBallAngle = Math.random().toString();
-    connection.invoke("JoinGame", newBallAngle).catch(e => console.error(e));
+playButton.addEventListener("click", () => {
+    waitingDiv.style.display = "inline";
+    connection.start().then(function () {
+        console.log("Connection successful");
+        const newBallAngle = Math.random().toString();
+        connection.invoke("JoinGame", newBallAngle, playerName.value).catch(e => console.error(e));
 
-}).catch(e => console.error(`Failed to start connection: ${e}`));
+    }).catch(e => console.error(`Failed to start connection: ${e}`));
+
+});
+
